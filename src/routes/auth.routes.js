@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
 import jwt from  "jsonwebtoken"
@@ -22,7 +23,7 @@ router.post("/register", async (req, res) => {
     });
 
     if (userAlreadyExists) {
-      return res.status(400).json({ error: "Use outro email" });
+      return res.status(401).json({ error: "Use outro email" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -51,23 +52,23 @@ router.post("/login", async (req,res) => {
     const {email, password} = req.body;
 
     if (!email || !password){
-      return res.error(400).json({ error: "Email e senha obrigatorios"})
+      return res.status(400).json({ error: "Email e senha obrigatorios"})
     }
 
     const user = await prisma.user.findUnique({ where: { email }})
 
     if (!user){
-     return res.error(400).json({ error: "Email ou senha incorreta"})
+     return res.status(400).json({ error: "Email ou senha incorreta"})
     };
 
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
-      return res.error(400).json({ error: "Email ou senha incorreta"})
+      return res.status(400).json({ error: "Email ou senha incorreta"})
     }
 
     const token = jwt.sign(
-      { sub: user.id },
+      { userId: user.id },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -86,5 +87,21 @@ router.post("/login", async (req,res) => {
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
 })
+
+  router.post("/logout", authMiddleware, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader.split(" ")[1];
+
+  const decoded = jwt.decode(token);
+
+  await prisma.blacklistedToken.create({
+    data: {
+      token,
+      expiresAt: new Date(decoded.exp * 1000)
+    }
+  });
+
+  return res.status(200).json({ message: "Logout realizado com sucesso" });
+});
 
 export default router;

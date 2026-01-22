@@ -1,5 +1,6 @@
 import express from "express";
-import router from "./routes/auth.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import deckRoutes from "./routes/deck.routes.js";
 
 const app = express();
 
@@ -9,7 +10,8 @@ app.get("/health", (req, res) => {
     res.json({ ok: true });
 })
 
-app.use("/auth", router);
+app.use("/auth", authRoutes);
+app.use("/decks", deckRoutes); 
 
 const PORT = process.env.PORT || 5000;
 
