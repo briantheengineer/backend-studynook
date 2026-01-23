@@ -1,34 +1,12 @@
 import { Router } from "express";
-import prisma from "../lib/prisma.js";
+import { createDeck, listDecks } from "../controllers/deck.controller.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
+import flashcardRoutes from "./flashcard.routes.js";
 
 const router = Router();
 
-router.post("/", authMiddleware, async (req, res) => {
-  const { title } = req.body;
-
-  if (!title) {
-    return res.status(400).json({ error: "Título obrigatório" });
-  }
-
-  const deck = await prisma.deck.create({
-    data: {
-      title,
-      userId: req.userId
-    }
-  });
-
-  return res.status(201).json(deck);
-});
-
-
-router.get("/", authMiddleware, async (req, res) => {
-  const decks = await prisma.deck.findMany({
-    where: { userId: req.userId },
-    orderBy: { createdAt: "desc" }
-  });
-
-  return res.json(decks);
-});
+router.post("/", authMiddleware, createDeck);
+router.get("/", authMiddleware, listDecks);
+router.use("/:deckId/flashcards", flashcardRoutes);
 
 export default router;

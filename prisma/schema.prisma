@@ -23,6 +23,8 @@ model User {
 
   decks      Deck[]
   flashcards Flashcard[]
+
+  @@index([email])
 }
 
 model Deck {
@@ -30,11 +32,13 @@ model Deck {
   name String
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   flashcards Flashcard[]
 
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Flashcard {
@@ -45,11 +49,14 @@ model Flashcard {
   userId String
   deckId String
 
-  user User @relation(fields: [userId], references: [id])
-  deck Deck @relation(fields: [deckId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([deckId])
 }
 
 model BlacklistedToken {
@@ -57,4 +64,6 @@ model BlacklistedToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([token])
 }
