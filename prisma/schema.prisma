@@ -20,6 +20,7 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  verificationTokens VerificationToken[]
 
   decks      Deck[]
   flashcards Flashcard[]
@@ -66,4 +67,12 @@ model BlacklistedToken {
   createdAt DateTime @default(now())
 
   @@index([token])
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
