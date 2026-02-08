@@ -1,69 +1,44 @@
 import { Router } from "express";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
-import jwt from  "jsonwebtoken"
+import jwt from "jsonwebtoken";
 import { transporter } from "../lib/mailer.js";
 
-
 const router = Router();
-
-router.get("/", (req, res) => {
-  res.json({ ok: true });
-});
 
 router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password || !name) {
       return res.status(400).json({ error: "Dados inválidos" });
     }
 
-    const userAlreadyExists = await prisma.user.findUnique({
-      where: { email },
-    });
+    const userAlreadyExists = await prisma.user.findUnique({ where: { email } });
 
     if (userAlreadyExists) {
-      return res.status(401).json({ error: "Use outro email" });
+      return res.status(400).json({ error: "Use outro email" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        password: hashedPassword,
-      },
+      data: { email, name, password: hashedPassword },
     });
-    
-   try {
-    await transporter.sendMail({
+
+    transporter.sendMail({
       from: `"StudyNook" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: "Bem-vindo ao StudyNook 🚀",
       text: "Sua conta foi criada com sucesso!",
-    });
-      console.log("EMAIL ENVIADO!");
-      
-      } catch (err) {
-        console.error("Erro ao enviar email:", err);
-      }
+    }).then(() => console.log("EMAIL ENVIADO!"))
+      .catch(err => console.error("Erro ao enviar email:", err));
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     return res.status(201).json({
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
+      user: { id: user.id, email: user.email, name: user.name },
     });
 
   } catch (error) {
@@ -72,64 +47,28 @@ router.post("/register", async (req, res) => {
   }
 });
 
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-
-
-router.post("/login", async (req,res) => {
-    try {
-    const {email, password} = req.body;
-
-    if (!email || !password){
-      return res.status(400).json({ error: "Email e senha obrigatorios"})
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email e senha obrigatórios" });
     }
 
-    const user = await prisma.user.findUnique({ where: { email }})
-
-    if (!user){
-     return res.status(400).json({ error: "Email ou senha incorreta"})
-    };
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(400).json({ error: "Email ou senha incorreta" });
 
     const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) return res.status(400).json({ error: "Email ou senha incorreta" });
 
-    if (!passwordMatch) {
-      return res.status(400).json({ error: "Email ou senha incorreta"})
-    }
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    return res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
 
-    return res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email
-      }
-    });
-      
-    } catch (error) {
+  } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
-})
-
-  router.post("/logout", authMiddleware, async (req, res) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader.split(" ")[1];
-
-  const decoded = jwt.decode(token);
-
-  await prisma.blacklistedToken.create({
-    data: {
-      token,
-      expiresAt: new Date(decoded.exp * 1000)
-    }
-  });
-
-  return res.status(200).json({ message: "Logout realizado com sucesso" });
 });
 
 export default router;
