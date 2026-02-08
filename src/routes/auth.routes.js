@@ -3,7 +3,8 @@ import { authMiddleware } from "../middlewares/authMiddleware.js";
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
 import jwt from  "jsonwebtoken"
-import crypto from "crypto";
+import { transporter } from "../lib/mailer.js";
+
 
 const router = Router();
 
@@ -36,6 +37,17 @@ router.post("/register", async (req, res) => {
         password: hashedPassword,
       },
     });
+    
+    try {
+      await transporter.sendMail({
+        from: `"StudyNook" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: "Bem-vindo ao StudyNook 🚀",
+        text: "Sua conta foi criada com sucesso!",
+      });
+    } catch (err) {
+      console.error("Erro ao enviar email:", err);
+    }
 
     const token = jwt.sign(
       { userId: user.id },
@@ -60,6 +72,7 @@ router.post("/register", async (req, res) => {
 
 
 
+
 router.post("/login", async (req,res) => {
     try {
     const {email, password} = req.body;
@@ -73,7 +86,7 @@ router.post("/login", async (req,res) => {
     if (!user){
      return res.status(400).json({ error: "Email ou senha incorreta"})
     };
-    
+
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
