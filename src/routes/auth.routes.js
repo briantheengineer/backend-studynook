@@ -73,13 +73,7 @@ router.post("/login", async (req,res) => {
     if (!user){
      return res.status(400).json({ error: "Email ou senha incorreta"})
     };
-
-    if (!user.emailVerified) {
-      return res.status(403).json({
-      error: "Verifique seu email antes de entrar."
-      });
-}
-
+    
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
