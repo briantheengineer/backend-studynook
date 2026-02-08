@@ -7,7 +7,9 @@ import flashcardRoutes from "./routes/flashcard.routes.js"
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: "https://frontend-studynook.vercel.app",
+}));
 app.get("/health", (req, res) => {
     res.json({ ok: true });
 })
