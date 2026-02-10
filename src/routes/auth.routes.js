@@ -2,8 +2,8 @@ import { Router } from "express";
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { transporter } from "../lib/mailer.js";
 import validator from "validator";
+import { transporter } from "../lib/mailer.js";
 
 const router = Router();
 
@@ -39,16 +39,19 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    transporter
-      .sendMail({
+    try {
+      const info = await transporter.sendMail({
         from: `"StudyNook" <${process.env.EMAIL_USER}>`,
         to: user.email,
         subject: "Bem-vindo ao StudyNook 🚀",
         text: "Sua conta foi criada com sucesso!",
-      })
-      .catch((err) => {
-        console.error("Erro ao enviar email:", err);
       });
+
+      console.log("EMAIL ENVIADO:", info.response);
+    } catch (err) {
+      console.error("ERRO AO ENVIAR EMAIL:");
+      console.error(err);
+    }
 
     const token = jwt.sign(
       { userId: user.id },
@@ -64,12 +67,12 @@ router.post("/register", async (req, res) => {
         name: user.name,
       },
     });
+
   } catch (error) {
-    console.error(error);
+    console.error("REGISTER ERROR:", error);
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
-
 
 router.post("/login", async (req, res) => {
   try {
@@ -79,18 +82,39 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Email e senha obrigatórios" });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(400).json({ error: "Email ou senha incorreta" });
+    const emailNormalized = email.toLowerCase().trim();
+
+    const user = await prisma.user.findUnique({
+      where: { email: emailNormalized },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: "Email ou senha incorreta" });
+    }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) return res.status(400).json({ error: "Email ou senha incorreta" });
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    if (!passwordMatch) {
+      return res.status(401).json({ error: "Email ou senha incorreta" });
+    }
 
-    return res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
 
   } catch (error) {
-    console.error(error);
+    console.error("LOGIN ERROR:", error);
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

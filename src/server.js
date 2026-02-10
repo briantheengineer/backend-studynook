@@ -3,6 +3,12 @@ import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import deckRoutes from "./routes/deck.routes.js";
 import flashcardRoutes from "./routes/flashcard.routes.js"
+import { transporter } from "./lib/mailer.js";
+
+transporter.verify()
+  .then(() => console.log("✅ SMTP READY"))
+  .catch(err => console.error("❌ SMTP ERROR:", err));
+
 
 const app = express();
 
