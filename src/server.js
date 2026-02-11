@@ -2,37 +2,30 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import deckRoutes from "./routes/deck.routes.js";
-import flashcardRoutes from "./routes/flashcard.routes.js"
-import { transporter } from "./lib/mailer.js";
-
-transporter.verify()
-  .then(() => console.log("✅ SMTP READY"))
-  .catch(err => console.error("❌ SMTP ERROR:", err));
-
+import flashcardRoutes from "./routes/flashcard.routes.js";
 
 const app = express();
 
 app.use(express.json());
+
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://frontend-studynook.vercel.app"
-  ],
-  credentials: true
+  origin: "*",
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
 }));
 
+app.options("*", cors());
+
 app.get("/health", (req, res) => {
-    res.json({ ok: true });
-})
+  res.json({ ok: true });
+});
 
 app.use("/auth", authRoutes);
 app.use("/decks", deckRoutes); 
 app.use("/flashcards", flashcardRoutes);
 
-
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`)
+  console.log(`Server is running on port ${PORT}`);
 });
-
