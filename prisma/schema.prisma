@@ -23,7 +23,6 @@ model User {
 
   decks      Deck[]
   flashcards Flashcard[]
-  imageUrl String?
 
   @@index([email])
 }
@@ -55,6 +54,8 @@ model Flashcard {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  imageUrl String?
 
   @@index([userId])
   @@index([deckId])
