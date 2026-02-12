@@ -4,7 +4,7 @@ export async function createFlashcard(req, res) {
   try {
     const { deckId } = req.params;
     const { front, back, imageUrl } = req.body;
-    const userId = req.user.id;
+    const userId = req.Id;
 
     const flashcard = await prisma.flashcard.create({
       data: {
