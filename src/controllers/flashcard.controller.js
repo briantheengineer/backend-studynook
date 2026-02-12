@@ -22,8 +22,8 @@ export async function createFlashcard(req, res) {
 
     res.status(201).json(flashcard);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao criar flashcard" });
+    console.error("CREATE FLASHCARD ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 }
 
@@ -44,7 +44,8 @@ export async function listFlashcards(req, res) {
 
     res.json(flashcards);
   } catch (err) {
-    res.status(500).json({ error: "Erro ao listar flashcards" });
+    console.error("LIST FLASHCARDS ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 }
 
@@ -53,7 +54,7 @@ export async function deleteFlashcard(req, res) {
     const { flashcardId } = req.params;
     const userId = req.userId;
 
-    await prisma.flashcard.delete({
+    await prisma.flashcard.deleteMany({
       where: {
         id: flashcardId,
         userId,
@@ -61,8 +62,9 @@ export async function deleteFlashcard(req, res) {
     });
 
     res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Erro ao deletar flashcard" });
+  } catch (err) {
+    console.error("DELETE FLASHCARD ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 }
 
@@ -72,7 +74,7 @@ export async function updateFlashcard(req, res) {
     const { front, back, imageUrl } = req.body;
     const userId = req.userId;
 
-    const updated = await prisma.flashcard.update({
+    const updated = await prisma.flashcard.updateMany({
       where: {
         id: flashcardId,
         userId,
@@ -85,8 +87,9 @@ export async function updateFlashcard(req, res) {
     });
 
     res.json(updated);
-  } catch {
-    res.status(500).json({ error: "Erro ao atualizar flashcard" });
+  } catch (err) {
+    console.error("UPDATE FLASHCARD ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 }
 
@@ -129,8 +132,11 @@ export async function reviewFlashcard(req, res) {
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + interval);
 
-    const updated = await prisma.flashcard.update({
-      where: { id: flashcardId },
+    const updated = await prisma.flashcard.updateMany({
+      where: {
+        id: flashcardId,
+        userId,
+      },
       data: {
         difficulty,
         interval,
@@ -141,7 +147,7 @@ export async function reviewFlashcard(req, res) {
 
     res.json(updated);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao revisar flashcard" });
+    console.error("REVIEW FLASHCARD ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 }
