@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 const router = express.Router();
 
@@ -11,24 +11,23 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 
-const upload = multer({ dest: "temp/" });
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "flashcards",
+    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+  },
+});
 
-router.post("/", upload.single("image"), async (req, res) => {
-  try {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "flashcards",
-    });
+const upload = multer({ storage });
 
-    fs.unlinkSync(req.file.path);
-
-    res.json({
-      url: result.secure_url,
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro no upload" });
+router.post("/", upload.single("image"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Nenhuma imagem enviada" });
   }
+
+  // Cloudinary já devolve a URL pronta
+  res.json({ url: req.file.path });
 });
 
 export default router;
