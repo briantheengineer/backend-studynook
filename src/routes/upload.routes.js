@@ -1,30 +1,34 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, Date.now() + ext);
-  },
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET,
 });
 
-const upload = multer({ storage });
+const upload = multer({ dest: "temp/" });
 
-router.post("/", upload.single("image"), (req, res) => {
-  const file = req.file;
-  if (!file) return res.status(400).json({ error: "Nenhuma imagem enviada" });
+router.post("/", upload.single("image"), async (req, res) => {
+  try {
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "flashcards",
+    });
 
-  const url = `${process.env.SERVER_URL || "http://localhost:5000"}/uploads/${file.filename}`;
-  res.json({ url });
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      url: result.secure_url,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro no upload" });
+  }
 });
 
 export default router;
