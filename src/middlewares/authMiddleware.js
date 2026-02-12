@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import prisma from "../lib/prisma.js"
+import prisma from "../lib/prisma.js";
 
 export async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -18,18 +18,17 @@ export async function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const tokenBlacklisted = await prisma.blacklistedToken.findUnique({
-      where: { token }
+      where: { token },
     });
 
-     if (tokenBlacklisted) {
+    if (tokenBlacklisted) {
       return res.status(401).json({ error: "Token inválido" });
     }
-
 
     req.userId = decoded.userId;
 
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: "Token inválido ou expirado" });
   }
 }

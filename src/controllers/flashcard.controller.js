@@ -4,7 +4,7 @@ export async function createFlashcard(req, res) {
   try {
     const { deckId } = req.params;
     const { front, back, imageUrl } = req.body;
-    const userId = req.Id;
+    const userId = req.userId;
 
     const flashcard = await prisma.flashcard.create({
       data: {
@@ -30,7 +30,7 @@ export async function createFlashcard(req, res) {
 export async function listFlashcards(req, res) {
   try {
     const { deckId } = req.params;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const flashcards = await prisma.flashcard.findMany({
       where: {
@@ -51,7 +51,7 @@ export async function listFlashcards(req, res) {
 export async function deleteFlashcard(req, res) {
   try {
     const { flashcardId } = req.params;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     await prisma.flashcard.delete({
       where: {
@@ -70,7 +70,7 @@ export async function updateFlashcard(req, res) {
   try {
     const { flashcardId } = req.params;
     const { front, back, imageUrl } = req.body;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const updated = await prisma.flashcard.update({
       where: {
@@ -93,8 +93,8 @@ export async function updateFlashcard(req, res) {
 export async function reviewFlashcard(req, res) {
   try {
     const { flashcardId } = req.params;
-    const { quality } = req.body; 
-    const userId = req.user.id;
+    const { quality } = req.body;
+    const userId = req.userId;
 
     const card = await prisma.flashcard.findFirst({
       where: {
