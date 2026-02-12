@@ -3,7 +3,8 @@ import {
   createFlashcard,
   listFlashcards, 
   deleteFlashcard,
-  updateFlashcard
+  updateFlashcard, 
+  reviewFlashcard
 } from "../controllers/flashcard.controller.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 
@@ -13,6 +14,7 @@ router.post("/", authMiddleware, createFlashcard);
 router.get("/", authMiddleware, listFlashcards);
 router.delete("/:flashcardId", authMiddleware, deleteFlashcard);
 router.put("/:flascardId", authMiddleware, updateFlashcard);
+router.post("/:flashcardId/review", authMiddleware, reviewFlashcard);
 
 
 export default router;

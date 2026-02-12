@@ -2,98 +2,146 @@ import prisma from "../lib/prisma.js";
 
 export async function createFlashcard(req, res) {
   try {
-    const { front, back, imageUrl } = req.body;
     const { deckId } = req.params;
-    const userId = req.userId;
-
-    if (!front || !back) {
-      return res.status(400).json({ error: "Front e back são obrigatórios" });
-    }
-
-    const deck = await prisma.deck.findFirst({
-      where: { id: deckId, userId }
-    });
-
-    if (!deck) {
-      return res.status(404).json({ error: "Deck não encontrado" });
-    }
+    const { front, back, imageUrl } = req.body;
+    const userId = req.user.id;
 
     const flashcard = await prisma.flashcard.create({
-      data: { front, back, imageUrl, deckId, userId }
+      data: {
+        front,
+        back,
+        imageUrl,
+        deckId,
+        userId,
+        difficulty: 2.5,
+        interval: 1,
+        repetitions: 0,
+        nextReview: new Date(),
+      },
     });
 
-    return res.status(201).json(flashcard);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro ao criar flashcard" });
+    res.status(201).json(flashcard);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao criar flashcard" });
   }
 }
 
 export async function listFlashcards(req, res) {
   try {
     const { deckId } = req.params;
-    const userId = req.userId;
-
-    const deck = await prisma.deck.findFirst({ where: { id: deckId, userId } });
-    if (!deck) return res.status(404).json({ error: "Deck não encontrado" });
+    const userId = req.user.id;
 
     const flashcards = await prisma.flashcard.findMany({
-      where: { deckId, userId },
-      orderBy: { createdAt: "asc" }
+      where: {
+        deckId,
+        userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
-    return res.json(flashcards);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro ao listar flashcards" });
+    res.json(flashcards);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao listar flashcards" });
   }
 }
 
 export async function deleteFlashcard(req, res) {
   try {
-    const { deckId, flashcardId } = req.params;
-    const userId = req.userId;
+    const { flashcardId } = req.params;
+    const userId = req.user.id;
 
-    const deck = await prisma.deck.findFirst({ where: { id: deckId, userId } });
-    if (!deck) return res.status(404).json({ error: "Deck não encontrado" });
+    await prisma.flashcard.delete({
+      where: {
+        id: flashcardId,
+        userId,
+      },
+    });
 
-    const flashcard = await prisma.flashcard.findFirst({ where: { id: flashcardId, deckId, userId } });
-    if (!flashcard) return res.status(404).json({ error: "Flashcard não encontrado" });
-
-    await prisma.flashcard.delete({ where: { id: flashcardId } });
-
-    return res.status(204).send();
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro ao deletar flashcard" });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Erro ao deletar flashcard" });
   }
 }
 
 export async function updateFlashcard(req, res) {
   try {
-    const { deckId, flashcardId } = req.params;
+    const { flashcardId } = req.params;
     const { front, back, imageUrl } = req.body;
-    const userId = req.userId;
+    const userId = req.user.id;
 
-    if (!front && !back && !imageUrl) {
-      return res.status(400).json({ error: "Informe pelo menos front, back ou imageUrl" });
-    }
-
-    const flashcard = await prisma.flashcard.findFirst({ where: { id: flashcardId, deckId, userId } });
-    if (!flashcard) return res.status(404).json({ error: "Flashcard não encontrado" });
-
-    const updatedFlashcard = await prisma.flashcard.update({
-      where: { id: flashcardId },
+    const updated = await prisma.flashcard.update({
+      where: {
+        id: flashcardId,
+        userId,
+      },
       data: {
-        front: front ?? flashcard.front,
-        back: back ?? flashcard.back,
-        ...(imageUrl ? { imageUrl } : {})
-      }
+        front,
+        back,
+        imageUrl,
+      },
     });
 
-    return res.json(updatedFlashcard);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro ao atualizar flashcard" });
+    res.json(updated);
+  } catch {
+    res.status(500).json({ error: "Erro ao atualizar flashcard" });
+  }
+}
+
+export async function reviewFlashcard(req, res) {
+  try {
+    const { flashcardId } = req.params;
+    const { quality } = req.body; 
+    const userId = req.user.id;
+
+    const card = await prisma.flashcard.findFirst({
+      where: {
+        id: flashcardId,
+        userId,
+      },
+    });
+
+    if (!card) {
+      return res.status(404).json({ error: "Flashcard não encontrado" });
+    }
+
+    let { difficulty, interval, repetitions } = card;
+
+    if (quality < 3) {
+      repetitions = 0;
+      interval = 1;
+    } else {
+      repetitions += 1;
+
+      if (repetitions === 1) interval = 1;
+      else if (repetitions === 2) interval = 6;
+      else interval = Math.round(interval * difficulty);
+    }
+
+    difficulty =
+      difficulty +
+      (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+
+    if (difficulty < 1.3) difficulty = 1.3;
+
+    const nextReview = new Date();
+    nextReview.setDate(nextReview.getDate() + interval);
+
+    const updated = await prisma.flashcard.update({
+      where: { id: flashcardId },
+      data: {
+        difficulty,
+        interval,
+        repetitions,
+        nextReview,
+      },
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao revisar flashcard" });
   }
 }
